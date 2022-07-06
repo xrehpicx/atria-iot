@@ -6,6 +6,7 @@ import {
   css,
   darken,
   IconButton,
+  LinearProgress,
   List,
   ListItemIcon,
   MenuItem,
@@ -22,11 +23,21 @@ import { useState } from "react";
 import { nanoid } from "nanoid";
 import { useAuth } from "../contexts/AuthContext";
 import { useEffect } from "react";
-import { useSignOut } from "react-supabase";
+import {
+  useDelete,
+  useInsert,
+  useRealtime,
+  useSelect,
+  useSignOut,
+  useSubscription,
+  useUpdate,
+} from "react-supabase";
+import { AnimateSharedLayout, motion } from "framer-motion";
+
 export function Home() {
   const { group } = useDefault();
-  const navigate = useNavigate();
-  const [{ error, fetching }, signOut] = useSignOut();
+
+  const [{}, signOut] = useSignOut();
 
   //   const theme = useTheme();
 
@@ -101,6 +112,13 @@ type DeviceType = {
 function Dash() {
   const [devices, setDevices] = useState<DeviceType[]>([]);
   const theme = useTheme();
+
+  const [devicesFetchStates, reexecute] = useRealtime("devices");
+  const [insertStates, addDevice] = useInsert("devices");
+  const [updateDeviceStates, updateDeviceState] = useUpdate("devices");
+  const [deleteDeviceState, deleteDevice] = useDelete("devices");
+
+  const { user } = useAuth();
   return (
     <Box
       css={css`
@@ -126,17 +144,18 @@ function Dash() {
           <Typography variant="h5" fontWeight={800}>
             Devices{" "}
             <IconButton
-              onClick={() =>
-                setDevices((ds) => [
-                  ...ds,
-                  {
-                    name: `Switch ${ds.length + 1}`,
-                    state: true,
-                    lastUpdated: "last updated 2mins ago",
-                    id: nanoid(),
-                  },
-                ])
-              }
+              onClick={async () => {
+                // setDevices((ds) => [
+                //   ...ds,
+                //   {
+                //     name: `Switch ${ds.length + 1}`,
+                //     state: true,
+                //     lastUpdated: "last updated 2mins ago",
+                //     id: nanoid(),
+                //   },
+                // ]);
+                addDevice({});
+              }}
             >
               <AddRoundedIcon />
             </IconButton>
@@ -148,7 +167,9 @@ function Dash() {
             padding: 0 2rem;
           `}
         >
-          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>A</Avatar>
+          <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+            {(user?.email ? user?.email[0] : "A").toUpperCase()}
+          </Avatar>
         </div>
       </Box>
       {/* dash body */}
@@ -158,7 +179,7 @@ function Dash() {
           overflow-y: scroll;
         `}
       >
-        {!devices.length ? (
+        {!devicesFetchStates?.data?.length ? (
           <Box
             css={css`
               height: 100%;
@@ -218,39 +239,58 @@ function Dash() {
               flex-wrap: wrap;
             `}
           >
-            {devices.map((device) => (
-              <Box
-                css={css`
-                  background: ${darken(theme.palette.primary.main, 0.85)};
-                  border: 2px solid ${theme.palette.primary.main};
-                  border-radius: 1rem;
-                  display: flex;
-                  flex-direction: column;
-                  align-items: center;
-                  padding: 2rem;
-                `}
-              >
-                <Typography variant="h5">{device.name}</Typography>
-                <Typography variant="h1">
-                  {device.state ? "ON" : "OFF"}
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() =>
-                    setDevices((ds) =>
+            <AnimateSharedLayout>
+              {devicesFetchStates?.data?.map((device) => (
+                <motion.div
+                  layoutId={device.id}
+                  key={device.id}
+                  css={css`
+                    background: ${darken(theme.palette.primary.main, 0.85)};
+                    border: 2px solid ${theme.palette.primary.main};
+                    border-radius: 1rem;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    padding: 2rem;
+                  `}
+                >
+                  <Typography variant="subtitle1" textOverflow="ellipsis">
+                    {device.id}
+                  </Typography>
+                  <Typography variant="h1">
+                    {device.state ? "ON" : "OFF"}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    onClick={() => {
+                      /* setDevices((ds) =>
                       ds.map((d) => {
                         if (d.id === device.id) {
                           d.state = !d.state;
                         }
                         return d;
                       })
-                    )
-                  }
-                >
-                  Toggle
-                </Button>
-              </Box>
-            ))}
+                    ) */
+                      updateDeviceState({ state: !device.state }, (query) =>
+                        query.eq("id", device.id).order("created_at")
+                      );
+                    }}
+                  >
+                    Toggle
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      deleteDevice((query) =>
+                        query.eq("id", device.id).order("created_at")
+                      );
+                    }}
+                  >
+                    delete
+                  </Button>
+                  {devicesFetchStates.fetching && <LinearProgress />}
+                </motion.div>
+              ))}
+            </AnimateSharedLayout>
           </Box>
         )}
       </Box>

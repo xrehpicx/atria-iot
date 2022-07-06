@@ -12,6 +12,7 @@ function App() {
       {user ? (
         <Routes>
           <Route path="/dashboard" element={<Home />} />
+          <Route path="/" element={<Home />} />
         </Routes>
       ) : (
         <Login />

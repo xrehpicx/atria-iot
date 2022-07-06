@@ -8,12 +8,20 @@ import {
   css,
   Button,
   darken,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  LinearProgress,
 } from "@mui/material";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSignIn, useSignUp } from "react-supabase";
 import { useDefault } from "../contexts/DefaultContext";
 import { useEffect } from "react";
+import React from "react";
+import { validateEmail } from "../utils";
 
 export function Login() {
   const theme = useTheme();
@@ -54,11 +62,18 @@ export function Login() {
           border: 2px solid ${theme.palette.primary.main};
           border-radius: 1rem;
           padding: 2rem 4rem;
-          min-width: 800px;
-          min-height: 400px;
           display: flex;
           align-items: stretch;
           justify-content: space-between;
+
+          min-width: 800px;
+          min-height: 400px;
+          width: 100%;
+
+          @media only screen and (max-width: 600px) {
+            min-width: 0;
+            flex-direction: column;
+          }
         `}
       >
         <Box
@@ -69,6 +84,10 @@ export function Login() {
             justify-content: center;
             flex-direction: column;
             border-right: 1px solid ${theme.palette.divider};
+            @media only screen and (max-width: 600px) {
+              border-right: none;
+              border-bottom: 1px solid ${theme.palette.divider};
+            }
           `}
         >
           <Typography variant="h5" fontWeight={800}>
@@ -131,19 +150,77 @@ export function Login() {
             justify-content: center;
           `}
         >
-          <Button
-            color="success"
-            variant="contained"
-            sx={{ borderRadius: 42 }}
-            size="large"
-            onClick={() => {
-              // signIn({ provider: "google" }).then(() => console.log("auth"));
-            }}
-          >
-            Sign in with Google
-          </Button>
+          <SignInWithEmail />
         </Box>
       </Box>
     </Container>
+  );
+}
+
+function SignInWithEmail() {
+  const [open, setOpen] = useState(false);
+
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const [loading, setLoading] = useState(false);
+  const [helper, setHelper] = useState("");
+  const [email, setEmail] = useState("");
+  const [_, signIn] = useSignIn();
+
+  return (
+    <>
+      <Button
+        color="success"
+        variant="contained"
+        sx={{ borderRadius: 42 }}
+        size="large"
+        onClick={handleClickOpen}
+      >
+        Sign in with Email
+      </Button>
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>Send Magic link</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Login link will be sent to ur email
+          </DialogContentText>
+          <TextField
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+            margin="dense"
+            id="name"
+            label="Email Address"
+            type="email"
+            fullWidth
+            variant="standard"
+            helperText={helper}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button
+            onClick={async () => {
+              setLoading(true);
+              await signIn({
+                email,
+              });
+              setLoading(false);
+              setHelper("Link sent");
+            }}
+            disabled={!validateEmail(email)}
+          >
+            Send
+          </Button>
+        </DialogActions>
+        {loading && <LinearProgress />}
+      </Dialog>
+    </>
   );
 }
